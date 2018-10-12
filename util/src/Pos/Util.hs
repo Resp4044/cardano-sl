@@ -8,6 +8,7 @@ module Pos.Util
        , module Pos.Util.Concurrent
        , module Pos.Util.Filesystem
        , module Pos.Util.Future
+       , module Pos.Util.InjectFail
        , module Pos.Util.Justify
        , module Pos.Util.Lens
        , module Pos.Util.LoggerName
@@ -27,6 +28,7 @@ import           Pos.Util.Concurrent.PriorityLock
 import           Pos.Util.Concurrent.RWLock
 import           Pos.Util.Filesystem
 import           Pos.Util.Future
+import           Pos.Util.InjectFail
 import           Pos.Util.Justify
 import           Pos.Util.Lens
 import           Pos.Util.LoggerName

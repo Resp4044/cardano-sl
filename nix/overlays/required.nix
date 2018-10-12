@@ -31,6 +31,9 @@ self: super: {
         inherit enableProfiling;
       };
     });
+    cardano-sl-wallet-new = overrideCabal super.cardano-sl-wallet-new (drv: {
+      executableHaskellDepends = (drv.executableHaskellDepends or []) ++ [ (doJailbreak super.cabal-install) ];
+    });
     cardano-sl-wallet-static = justStaticExecutablesGitRev super.cardano-sl-wallet;
     cardano-sl-client = addRealTimeTestLogs super.cardano-sl-client;
     cardano-sl-generator = addRealTimeTestLogs super.cardano-sl-generator;

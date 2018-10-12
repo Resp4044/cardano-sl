@@ -29,10 +29,12 @@ import           Cardano.Wallet.Server.CLI (NewWalletBackendParams,
                      getFullMigrationFlag, getWalletDbOptions, walletDbPath,
                      walletRebuildDb)
 import           Cardano.Wallet.Server.Middlewares (throttleMiddleware,
-                     withDefaultHeader)
+                     withDefaultHeader, ignoreAPI)
 import qualified Cardano.Wallet.Server.Plugins as Plugins
 import           Cardano.Wallet.WalletLayer (PassiveWalletLayer)
 import qualified Cardano.Wallet.WalletLayer.Kernel as WalletLayer.Kernel
+
+import           System.Environment (lookupEnv)
 
 
 -- | The "workhorse" responsible for starting a Cardano edge node plus a number of extra plugins.
@@ -64,10 +66,11 @@ actionWithWallet params genesisConfig walletConfig txpConfig ntpConfig nodeParam
             , Kernel.dbPathMetadata  = dbPath <> "-sqlite.sqlite3"
             , Kernel.dbRebuild       = rebuildDB
             })
+        faultInjIgnoreAPI <- liftIO $ lookupEnv "CARDANO_INJECT_FAILURE_IGNORE_API"
         WalletLayer.Kernel.bracketPassiveWallet dbMode logMessage' keystore nodeState $ \walletLayer passiveWallet -> do
             migrateLegacyDataLayer passiveWallet dbPath (getFullMigrationFlag params)
 
-            let plugs = plugins (walletLayer, passiveWallet) dbMode
+            let plugs = plugins (walletLayer, passiveWallet) dbMode faultInjIgnoreAPI
 
             Kernel.Mode.runWalletMode
                 genesisConfig
@@ -80,15 +83,18 @@ actionWithWallet params genesisConfig walletConfig txpConfig ntpConfig nodeParam
 
     plugins :: (PassiveWalletLayer IO, PassiveWallet)
             -> Kernel.DatabaseMode
+            -> Maybe String
             -> [ (Text, Plugins.Plugin Kernel.Mode.WalletMode) ]
-    plugins w dbMode = concat [
+    plugins w dbMode mIgnoreAPI = concat [
             -- The actual wallet backend server.
             [
-                ("wallet-new api worker", Plugins.apiServer pm params w
-                -- Throttle requests.
-                [ throttleMiddleware (ccThrottle walletConfig)
-                , withDefaultHeader Headers.applicationJson
-                ])
+              ("wallet-new api worker",
+                Plugins.apiServer pm params w $
+                maybeToList (ignoreAPI <$ mIgnoreAPI)
+                <> -- Throttle requests.
+                   [ throttleMiddleware (ccThrottle walletConfig)
+                   , withDefaultHeader Headers.applicationJson
+                   ])
 
             -- The corresponding wallet documention, served as a different
             -- server which doesn't require client x509 certificates to

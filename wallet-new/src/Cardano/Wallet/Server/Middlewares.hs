@@ -7,6 +7,7 @@ module Cardano.Wallet.Server.Middlewares
     ( withMiddlewares
     , throttleMiddleware
     , withDefaultHeader
+    , ignoreAPI
     ) where
 
 import           Universum
@@ -17,6 +18,7 @@ import           Network.HTTP.Types.Header (Header)
 import           Network.HTTP.Types.Method (methodPatch, methodPost, methodPut)
 import           Network.Wai (Application, Middleware, ifRequest,
                      requestHeaders, requestMethod, responseLBS)
+import qualified Network.Wai.Internal            as Wai
 import qualified Network.Wai.Middleware.Throttle as Throttle
 
 import           Cardano.Wallet.API.V1.Headers (applicationJson)
@@ -67,3 +69,7 @@ withDefaultHeader header = ifRequestWithBody $ \app req send ->
                 req { requestHeaders = header : headers }
     in
         app req' send
+
+-- | A @Middleware@ to ignore the entire API.
+ignoreAPI :: Middleware
+ignoreAPI _ignore = \_req _respond -> pure Wai.ResponseReceived
