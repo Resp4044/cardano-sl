@@ -30,7 +30,7 @@ data NetworkMagic
 instance NFData NetworkMagic
 
 instance Buildable NetworkMagic where
-    build NetworkMainOrStage   = "NetworkMainOrStage"
+    build NetworkMainOrStage = "NetworkMainOrStage"
     build (NetworkTestnet n) = bprint ("NetworkTestnet ("%build%")") n
 
 instance SafeCopy NetworkMagic where
@@ -38,7 +38,7 @@ instance SafeCopy NetworkMagic where
         0 -> pure NetworkMainOrStage
         1 -> NetworkTestnet <$> safeGet
         t -> cerealError $ "getCopy@NetworkMagic: couldn't read tag: " <> show t
-    putCopy NetworkMainOrStage   = contain $ putWord8 0
+    putCopy NetworkMainOrStage = contain $ putWord8 0
     putCopy (NetworkTestnet x) = contain $ putWord8 1 >> safePut x
 
 makeNetworkMagic :: ProtocolMagic -> NetworkMagic

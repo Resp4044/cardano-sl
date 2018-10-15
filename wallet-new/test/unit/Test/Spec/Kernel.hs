@@ -20,6 +20,7 @@ import qualified Cardano.Wallet.Kernel.Read as Kernel
 import           Pos.Chain.Genesis (Config (..))
 import           Pos.Core (Coeff (..), TxSizeLinear (..))
 import           Pos.Core.Chrono
+import           Pos.Crypto (ProtocolMagic (..), RequiresNetworkMagic (..))
 
 import           Data.Validated
 import           Test.Infrastructure.Generator
@@ -55,6 +56,17 @@ withWithoutWW specWith = do
 
 spec :: Spec
 spec = do
+    runWithMagic RequiresNoMagic
+    runWithMagic RequiresMagic
+
+runWithMagic :: RequiresNetworkMagic -> Spec
+runWithMagic rnm = do
+    pm <- (\ident -> ProtocolMagic ident rnm) <$> runIO (generate arbitrary)
+    describe ("(requiresNetworkMagic=" ++ show rnm ++ ")") $
+        specBody pm
+
+specBody :: ProtocolMagic -> Spec
+specBody pm = do
     describe "test TxMeta insertion" $ do
       withWithoutWW $ \useWW -> do
         it "TxMetaScenarioA" $ bracketTxMeta useWW (txMetaScenarioA genesis)
@@ -96,7 +108,7 @@ spec = do
               ]
 
   where
-    transCtxt = runTranslateNoErrors ask
+    transCtxt = runTranslateNoErrors pm ask
     boot      = bootstrapTransaction transCtxt
 
     ourActorIx   = 0
@@ -126,7 +138,7 @@ spec = do
              -> Inductive h Addr
              -> IO (Validated EquivalenceViolation (IntCtxt h))
     evaluate useWW activeWallet ind = do
-       fmap (fmap snd) $ runTranslateTNoErrors $ do
+       fmap (fmap snd) $ runTranslateTNoErrors pm $ do
          equivalentT useWW activeWallet esk (mkWallet ours') ind
       where
         esk = deriveRootEsk (IxPoor ourActorIx)
@@ -176,7 +188,7 @@ spec = do
             intCtxt <- evaluate' useWW activeWallet ind
 
             -- translate DSL BlockMeta' to Cardano BlockMeta
-            expected' <- runTranslateT $ intBlockMeta intCtxt blockMeta'
+            expected' <- runTranslateT pm $ intBlockMeta intCtxt blockMeta'
 
             -- grab a snapshot of the wallet state to get the BlockMeta produced by evaluating the inductive
             snapshot <- liftIO (Kernel.getWalletSnapshot (Kernel.walletPassive activeWallet))
